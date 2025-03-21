@@ -12,6 +12,9 @@ app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
 
+// DB
+require('./config/db');
+
 // Routes
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'Server is running 🚀' });
