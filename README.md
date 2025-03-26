@@ -99,9 +99,9 @@ npm run dev
 
 ---
 
-## 💻 Example Request Body
+### 💻 Example Request Body
 
-### Register:
+#### Register:
 
 ```json
 POST /api/v1/auth/register
@@ -113,7 +113,7 @@ POST /api/v1/auth/register
 }
 ```
 
-### Login:
+#### Login:
 
 ```json
 POST /api/v1/auth/login
@@ -123,31 +123,41 @@ POST /api/v1/auth/login
 }
 ```
 
-# Create Article API Documentation
+### Article API Documentation
 
-## Endpoint
+### Article Routes :
 
-**POST** `/api/articles`
 
-## Description
+| Method | Endpoint              | Description                                      | Authorization |
+|--------|----------------------|--------------------------------------------------|---------------|
+| POST   | `/api/articles/`      | Create a new article                            | Authenticated Users |
+| GET    | `/api/articles/`      | Fetch all articles                              | None          |
+| GET    | `/api/articles/:id`   | Fetch a single article by ID                    | None          |
+| DELETE | `/api/articles/:id`   | Delete an article (soft/permanent)              | Publisher, `local_admin`, `super_admin` |
+
+### 1. Create Article
+**Endpoint:** `POST /api/articles/`
+
+
+#### Description
 
 This endpoint allows authenticated users to create an article with a featured image and multiple content blocks, including text and images.
 
-## Authorization
+#### Authorization
 
 - Required Roles: `reporter`, `super_admin`
 - Authentication: Bearer Token (JWT required)
 
-## Request Format
+#### Request Format
 
-### Headers
+##### Headers
 
 ```http
 Content-Type: multipart/form-data
 Authorization: Bearer <your_token>
 ```
 
-### Form Data
+##### Form Data
 
 | Field           | Type                | Description                             |
 | --------------- | ------------------- | --------------------------------------- |
@@ -155,7 +165,7 @@ Authorization: Bearer <your_token>
 | `blockImages`   | `file[]` (optional) | Multiple image files for image blocks   |
 | `data`          | `JSON (string)`     | JSON object containing article details  |
 
-### JSON Structure in `data` Field
+##### JSON Structure in `data` Field
 
 ```json
 {
@@ -186,9 +196,9 @@ Authorization: Bearer <your_token>
 }
 ```
 
-## Response Format
+#### Response Format
 
-### Success Response
+##### Success Response
 
 **Status Code:** `201 Created`
 
@@ -226,9 +236,9 @@ Authorization: Bearer <your_token>
 }
 ```
 
-### Error Responses
+#### Error Responses
 
-#### 400 Bad Request (Invalid JSON)
+###### 400 Bad Request (Invalid JSON)
 
 ```json
 {
@@ -236,7 +246,7 @@ Authorization: Bearer <your_token>
 }
 ```
 
-#### 401 Unauthorized
+###### 401 Unauthorized
 
 ```json
 {
@@ -244,7 +254,7 @@ Authorization: Bearer <your_token>
 }
 ```
 
-#### 500 Internal Server Error
+###### 500 Internal Server Error
 
 ```json
 {
@@ -252,40 +262,47 @@ Authorization: Bearer <your_token>
 }
 ```
 
-## Notes
+###### Notes
 
 - The `data` field should be sent as a JSON string.
 - `blockImages` should align with `blocks` where `type` is `image`.
 - Images are stored in `/public/uploads/`.
 - The API automatically assigns URLs to uploaded images.
 
-**Example Usage (cURL):**
+### 2. Get All Articles
+**Endpoint:** `GET /api/articles/`
 
-```sh
-curl -X POST "http://localhost:5000/api/articles" \
--H "Authorization: Bearer YOUR_TOKEN" \
--H "Content-Type: multipart/form-data" \
--F "featuredImage=@/path/to/featured.jpg" \
--F "blockImages=@/path/to/image1.jpg" \
--F "blockImages=@/path/to/image2.jpg" \
--F "data={\"title\":\"AI Revolution in 2025\",\"region\":\"Global\",...}"
-```
+**Response:**
+- `200 OK` - Returns an array of articles
+- `204 No Content` - No articles found
 
-## 📌 Notes
+### 3. Get Article by ID
+**Endpoint:** `GET /api/articles/:id`
 
-- Clean & modular folder structure.
-- Centralized response handlers.
-- Express-validator based validation.
-- Async error handling with custom `asyncHandler()`.
+**Response:**
+- `200 OK` - Returns the requested article
+- `404 Not Found` - Article not found
+
+### 4. Delete Article by ID
+**Endpoint:** `DELETE /api/articles/:id`
+
+**Authorization Required:**
+- User must be either the publisher of the article or have the role `local_admin` or `super_admin`.
+
+**Behavior:**
+- **Development Mode (`NODE_ENV=dev`)**: Permanently deletes the article and removes associated images from `public/uploads`.
+- **Production Mode (`NODE_ENV=production`)**: Soft deletes the article by marking `isDeleted: true`.
+
+**Response:**
+- `200 OK` - Article deleted successfully
+- `403 Forbidden` - Unauthorized action
+- `404 Not Found` - Article not found
 
 ---
-
 ## 🎯 Future Scope
 
-- JWT Authentication
 - Password Reset with Email
-- Role Permissions Middleware
-- Testing with Jest or Mocha
+- and many more...
 
 ---
 
