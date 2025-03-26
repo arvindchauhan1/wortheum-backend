@@ -29,6 +29,10 @@ router.get('/', getArticles);
 router.get('/:id', getArticleById);
 
 // Soft delete article by ID
-router.delete('/:id', auth, authorizeRole(["reporter", "super_admin", "super_admin"]), deleteArticle);
+router.delete('/:id',
+    auth,
+    authorizeRole(["reporter", "super_admin", "super_admin"]),
+    deleteArticle
+);
 
 module.exports = router;
