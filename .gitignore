@@ -1,3 +1,7 @@
+#dev ignore
+/public/uploads
+/article.json
+
 # Logs
 logs
 *.log

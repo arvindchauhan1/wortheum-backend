@@ -17,6 +17,7 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 // DB
@@ -26,7 +27,7 @@ require('./config/db');
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'Server is running 🚀, brrrrr............🏃‍♂️‍➡️' });
 });
-app.use("/api/v1",routes);
+app.use("/api/v1", routes);
 
 // After all your routes:
 // Global Error Handler (should always be after routes)
