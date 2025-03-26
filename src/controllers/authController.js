@@ -3,6 +3,9 @@ const asyncHandler = require('../middlewares/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const successHandler = require('../utils/successHandler');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { default: mongoose } = require('mongoose');
+const getCurrentUser = require('../utils/getCurrentUser');
 
 // @desc    Register User
 // @route   POST /api/v1/auth/register
@@ -48,5 +51,40 @@ exports.login = asyncHandler(async (req, res, next) => {
         return next(new ApiError(401, 'Invalid email or password'));
     }
 
-    return successHandler(res, 200, 'Login successful');
+    // Generate token
+    const token = jwt.sign(
+        {
+            id: user._id.toString(),
+            role: user.role
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+    );
+
+
+    // Set token in header
+    // res.setHeader('Authorization', `Bearer ${token}`);
+
+    // Set token in header BEFORE sending response
+    res.setHeader('Authorization', `Bearer ${token}`);
+
+    return successHandler(res, 200, 'Login successful', { token });
+});
+
+
+
+// @desc    Test Login and return user details
+// @route   POST /api/v1/auth/test-login
+// @access  Public
+exports.testLogin = asyncHandler(async (req, res, next) => {
+    const user = await getCurrentUser(req.user.id);
+    if (!user) {
+        return next(new ApiError(401, 'Invalid login attempt.'));
+    }
+
+    return successHandler(res, 200, 'Test login successful', {
+        name: user.name,
+        email: user.email,
+        role: user.role
+    });
 });

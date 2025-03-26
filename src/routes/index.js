@@ -1,9 +1,13 @@
 const express = require('express');
-const authRoute = require('./authRoute');
-
 const router = express.Router();
 
-// Define all base routes here
+const authRoute = require('./authRoute');
+const articleRoute = require('./articleRoute');
+
+// Auth routes
 router.use('/auth', authRoute);
+
+// Article routes
+router.use('/articles', articleRoute);
 
 module.exports = router;
