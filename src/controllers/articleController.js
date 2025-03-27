@@ -21,11 +21,11 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
     } catch (error) {
         return next(new ApiError(400, "Invalid JSON format in 'data'"));
     }
-    const { title, region, blocks: rawBlocks, featuredImage, ...optionalFields } = parsedBody;
+    const { title, region, blocks: rawBlocks, featuredImage, category, ...optionalFields } = parsedBody;
 
     // Validate required fields
-    if (!title || !region || !rawBlocks || !req.files?.featuredImage) {
-        return next(new ApiError(400, "Title, region, and featuredImage are required"));
+    if (!title || !region || !rawBlocks || !category || !req.files?.featuredImage) {
+        return next(new ApiError(400, "Title, region, category and featuredImage are required"));
     }
 
     // Process featured image
@@ -60,6 +60,7 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
 
     const articleData = {
         title,
+        category,
         region,
         blocks, // Optional blocks
         publisherId: req.user.id,

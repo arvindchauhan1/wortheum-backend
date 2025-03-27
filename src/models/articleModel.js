@@ -17,7 +17,8 @@ const blockSchema = new mongoose.Schema({
 
 const articleSchema = new mongoose.Schema({
     title: { type: String, required: true },
-    subtitle: { type: String },
+    subtitle: { type: String, required: true },
+    category: { type: String },
     publisherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Updated here
     region: { type: String, required: true },
     status: {
