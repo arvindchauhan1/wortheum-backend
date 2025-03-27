@@ -94,8 +94,8 @@ npm run dev
 
 | Method | Endpoint                | Description         |
 | ------ | ----------------------- | ------------------- |
-| POST   | `/api/v1/auth/register` | Register a new user |
-| POST   | `/api/v1/auth/login`    | Login a user        |
+| POST   | `BASE_URL/auth/register` | Register a new user |
+| POST   | `BASE_URL/auth/login`    | Login a user        |
 
 ---
 
@@ -104,7 +104,7 @@ npm run dev
 #### Register:
 
 ```json
-POST /api/v1/auth/register
+POST BASE_URL/auth/register
 {
     "name": "John Doe",
     "email": "john@example.com",
@@ -116,7 +116,7 @@ POST /api/v1/auth/register
 #### Login:
 
 ```json
-POST /api/v1/auth/login
+POST BASE_URL/auth/login
 {
     "email": "john@example.com",
     "password": "123456"
@@ -128,15 +128,16 @@ POST /api/v1/auth/login
 ### Article Routes :
 
 
-| Method | Endpoint              | Description                                      | Authorization |
-|--------|----------------------|--------------------------------------------------|---------------|
-| POST   | `/api/articles/`      | Create a new article                            | Authenticated Users |
-| GET    | `/api/articles/`      | Fetch all articles                              | None          |
-| GET    | `/api/articles/:id`   | Fetch a single article by ID                    | None          |
-| DELETE | `/api/articles/:id`   | Delete an article (soft/permanent)              | Publisher, `local_admin`, `super_admin` |
+| Method | Endpoint              | Description                         | Authorization |
+|:-----:|:---------------------:|:-----------------------------------:|:------------:|
+| POST  | `BASE_URL/articles/`      | Create a new article               | Authenticated Users |
+| GET   | `BASE_URL/articles/`      | Fetch all articles                 | None         |
+| GET   | `BASE_URL/articles/:id`   | Fetch article by ID                | None         |
+| DELETE| `BASE_URL/articles/:id`   | Delete article (soft/permanent)    | Publisher, `admin`, `super_admin` |
+| PUT   | `BASE_URL/articles/:id`   | Update article                     | Publisher, `admin`, `super_admin` |
 
 ### 1. Create Article
-**Endpoint:** `POST /api/articles/`
+**Endpoint:** `POST BASE_URL/articles/`
 
 
 #### Description
@@ -270,21 +271,21 @@ Authorization: Bearer <your_token>
 - The API automatically assigns URLs to uploaded images.
 
 ### 2. Get All Articles
-**Endpoint:** `GET /api/articles/`
+**Endpoint:** `GET BASE_URL/articles/`
 
 **Response:**
 - `200 OK` - Returns an array of articles
 - `204 No Content` - No articles found
 
 ### 3. Get Article by ID
-**Endpoint:** `GET /api/articles/:id`
+**Endpoint:** `GET BASE_URL/articles/:id`
 
 **Response:**
 - `200 OK` - Returns the requested article
 - `404 Not Found` - Article not found
 
 ### 4. Delete Article by ID
-**Endpoint:** `DELETE /api/articles/:id`
+**Endpoint:** `DELETE BASE_URL/articles/:id`
 
 **Authorization Required:**
 - User must be either the publisher of the article or have the role `local_admin` or `super_admin`.
@@ -297,6 +298,37 @@ Authorization: Bearer <your_token>
 - `200 OK` - Article deleted successfully
 - `403 Forbidden` - Unauthorized action
 - `404 Not Found` - Article not found
+
+### 5. Update Article
+**Endpoint:** `PUT BASE_URL/articles/:id`
+
+Update article content, featured image, or block images.  
+**Roles:** `publisher`, `local_admin`, `super_admin`
+
+#### Request
+
+**Headers:**
+- `Content-Type: multipart/form-data`
+- `Authorization: Bearer <token>`
+
+**Form Data:**
+| Field           | Type                | Description                  |
+| --------------- | ------------------- | ---------------------------- |
+| `featuredImage` | `file` (optional)   | New featured image           |
+| `blockImages`   | `file[]` (optional) | New block images             |
+| `data`          | `JSON (string)`     | Updated article details     |
+
+__📌 Note__ : Refer Create Article Api for more details.
+
+#### Success Response
+`200 OK`
+```json
+{ "message": "Article updated successfully", "article": { /* updated data */ } }
+```
+
+#### Errors
+`400` Invalid JSON, `403` Unauthorized, `404` Not Found, `500` Server Error
+
 
 ---
 ## 🎯 Future Scope
