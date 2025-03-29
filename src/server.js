@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // static upload folder
-app.use('/uploads', express.static('public/uploads'));
+app.use('/api/v1/uploads', express.static('public/uploads'));
 
 
 
