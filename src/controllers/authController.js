@@ -13,6 +13,10 @@ const getCurrentUser = require('../utils/getCurrentUser');
 exports.register = asyncHandler(async (req, res, next) => {
     const { name, email, password, role } = req.body;
 
+    if (["admin", "super_admin"].includes(role)) {
+        return next(new ApiError(403, "Unauthorized to register as an admin account"));
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
         return next(new ApiError(400, 'Email already exists'));
