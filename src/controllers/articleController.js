@@ -63,7 +63,7 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
         category,
         region,
         blocks, // Optional blocks
-        publisherId: req.user.id,
+        publisherId: req.user._id,
         featuredImage: finalFeaturedImage,
         ...optionalFields,
     };
@@ -104,7 +104,7 @@ exports.deleteArticle = asyncHandler(async (req, res, next) => {
     }
     // Check if the logged-in user is authorized to delete
     if (
-        article.publisherId.toString() !== req.user.id && // Not the publisher
+        article.publisherId.toString() !== req.user._id && // Not the publisher
         !['admin', 'super_admin'].includes(req.user.role) // Not an admin
     ) {
         return next(new ApiError(403, 'Unauthorized to delete this article'));
@@ -159,7 +159,7 @@ exports.updateArticle = asyncHandler(async (req, res, next) => {
 
     // Authorization check
     if (
-        article.publisherId.toString() !== req.user.id &&
+        article.publisherId.toString() !== req.user._id &&
         !["admin", "super-admin"].includes(req.user.role)
     ) {
         return next(new ApiError(403, "You are not authorized to update this article"));

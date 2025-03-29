@@ -54,7 +54,7 @@ exports.login = asyncHandler(async (req, res, next) => {
     // Generate token
     const token = jwt.sign(
         {
-            id: user._id.toString(),
+            _id: user._id.toString(),
             role: user.role
         },
         process.env.JWT_SECRET,
@@ -77,7 +77,7 @@ exports.login = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/auth/test-login
 // @access  Public
 exports.testLogin = asyncHandler(async (req, res, next) => {
-    const user = await getCurrentUser(req.user.id);
+    const user = await getCurrentUser(req.user._id);
     if (!user) {
         return next(new ApiError(401, 'Invalid login attempt.'));
     }
