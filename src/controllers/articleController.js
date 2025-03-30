@@ -2,8 +2,10 @@ const asyncHandler = require('../middlewares/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const successHandler = require('../utils/successHandler');
 const Article = require('../models/articleModel');
+const ApproveLog = require('../models/approveLogModel');
 const getCurrentUser = require('../utils/getCurrentUser');
 const { deleteImage } = require('../utils/imageDeleteHelper');
+const { default: mongoose } = require('mongoose');
 
 const IMG_PATH = "/uploads/";
 
@@ -73,15 +75,94 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
     return successHandler(res, 201, "Article created successfully", { article });
 });
 
-// @desc    Get All Articles
-exports.getArticles = asyncHandler(async (req, res, next) => {
-    const articles = await Article.find({ isDeleted: false });
+// filter helper
+// Reusable function to build query filters
+const buildArticleFilter = (query) => {
+    const { category, publisher, startDate, endDate, status, tags } = query;
 
-    if (articles.length === 0) {
-        return next(new ApiError(204, 'No articles found'));
+    const filter = {
+        isDeleted: false,
+        ...(status && { status }), // Status filter (optional)
+        ...(category && { category }),
+        ...(tags ? { tags: { $in: tags.split(',').map(tag => tag.trim()) } } : {}),
+        ...(publisher && mongoose.Types.ObjectId.isValid(publisher) && { publisherId: new mongoose.Types.ObjectId(publisher) }),
+        ...(startDate || endDate) && {
+            createdAt: {
+                ...(startDate && { $gte: new Date(startDate) }),
+                ...(endDate && { $lte: new Date(endDate) }),
+            },
+        },
+    };
+
+    if (publisher && !mongoose.Types.ObjectId.isValid(publisher)) {
+        throw new ApiError(400, 'Invalid publisher ID');
     }
 
-    return successHandler(res, 200, 'Articles fetched successfully', articles);
+    return filter;
+};
+
+// @desc    Get approved articles with query filters and pagination
+// @route   GET /api/articles
+// @access  Public
+exports.getApprovedArticles = asyncHandler(async (req, res, next) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+
+        const filter = buildArticleFilter({ ...req.query, status: 'approved' });
+        console.log(filter)
+
+        // Pagination
+        const pageNumber = parseInt(page, 10);
+        const pageSize = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Fetch data
+        const totalArticles = await Article.countDocuments(filter);
+        const articles = await Article.find(filter).limit(pageSize).skip(skip);
+
+        if (!articles.length) {
+            return next(new ApiError(204, 'No articles found'));
+        }
+
+        return successHandler(res, 200, 'Approved articles fetched successfully', {
+            totalArticles,
+            totalPages: Math.ceil(totalArticles / pageSize),
+            currentPage: pageNumber,
+            pageSize,
+            articles,
+        });
+
+    } catch (error) {
+        return next(error);
+    }
+});
+
+
+// @desc    Get all articles with query filters and pagination
+// @route   GET /api/articles/all
+// @access  Admin
+exports.getAllArticles = asyncHandler(async (req, res, next) => {
+    const { page = 1, limit = 10 } = req.query;
+
+    const filter = buildArticleFilter(req.query);
+    console.log(filter)
+
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * pageSize;
+
+    const totalArticles = await Article.countDocuments(filter);
+    const articles = await Article.find(filter).limit(pageSize).skip(skip);
+
+    if (!articles.length) return next(new ApiError(204, 'No articles found'));
+
+    return successHandler(res, 200, 'Articles fetched successfully', {
+        totalArticles,
+        totalPages: Math.ceil(totalArticles / pageSize),
+        currentPage: pageNumber,
+        pageSize,
+        articles,
+    });
 });
 
 // @desc    Get Single Article by ID
@@ -224,3 +305,35 @@ exports.updateArticle = asyncHandler(async (req, res, next) => {
     return successHandler(res, 200, "Article updated successfully", { article });
 });
 
+// @desc    Approve or Reject an Article
+// @route   POST /api/articles/approve
+// @access  Admin/Superadmin
+exports.approveArticle = asyncHandler(async (req, res, next) => {
+    const { articleId, action, remarks } = req.body;
+    const { _id, role } = req.user;
+
+    if (!['admin', 'super_admin'].includes(role)) {
+        return next(new ApiError(403, 'Unauthorized: Only Admins can approve or reject articles'));
+    }
+
+    const article = await Article.findById(articleId);
+    if (!article) {
+        return next(new ApiError(404, 'Article not found'));
+    }
+
+    if (!['approved', 'rejected'].includes(action)) {
+        return next(new ApiError(400, 'Invalid action. Allowed actions: approved, rejected'));
+    }
+
+    article.status = action;
+    await article.save();
+
+    const log = await ApproveLog.create({
+        articleId,
+        actionBy: _id,
+        action,
+        remarks
+    });
+
+    return successHandler(res, 200, 'Article approval status updated successfully', log);
+});
