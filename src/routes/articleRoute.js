@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const {
     createArticle,
-    getArticles,
     getArticleById,
     deleteArticle,
-    updateArticle
+    updateArticle,
+    approveArticle,
+    getAllArticles,
+    getApprovedArticles
 } = require('../controllers/articleController');
 const auth = require('../middlewares/auth');
 const authorizeRole = require('../middlewares/authorizeRole');
@@ -23,8 +25,15 @@ router.post('/',
     createArticle
 );
 
-// Get all articles
-router.get('/', getArticles);
+// Get all articles (Admin)
+router.get('/all',
+    auth,
+    authorizeRole(["admin", "super_admin"]),
+    getAllArticles
+);
+
+// Get approved articles
+router.get('/', getApprovedArticles);
 
 // Get single article by ID
 router.get('/:id', getArticleById);
@@ -45,6 +54,13 @@ router.put('/:id',
         { name: "blockImages", maxCount: 10 } // Adjust maxCount as needed
     ]),
     updateArticle
+);
+
+// approve article by ID
+router.patch('/approve',
+    auth,
+    authorizeRole(["admin", "super_admin"]),
+    approveArticle
 );
 
 module.exports = router;
