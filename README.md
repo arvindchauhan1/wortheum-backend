@@ -90,7 +90,7 @@ npm run dev
 
 ## 🧩 API Endpoints
 
-### Auth Routes:
+### 🔐 Auth Routes:
 
 | Method | Endpoint                | Description         |
 | ------ | ----------------------- | ------------------- |
@@ -99,7 +99,7 @@ npm run dev
 
 ---
 
-### 💻 Example Request Body
+#### 💻 Example Request Body
 
 #### Register:
 
@@ -123,7 +123,7 @@ POST BASE_URL/auth/login
 }
 ```
 
-### Article API Documentation
+### 📰 Article API Documentation
 
 ### Article Routes :
 
@@ -328,6 +328,103 @@ __📌 Note__ : Refer Create Article Api for more details.
 
 #### Errors
 `400` Invalid JSON, `403` Unauthorized, `404` Not Found, `500` Server Error
+
+
+### 👤 User API Documentation
+#### API Endpoints Overview
+
+| Method | Endpoint      | Description          |
+|--------|-------------|----------------------|
+| GET    | `BASE_URL/users/profile`    | Get logged-in user profile |
+| GET    | `BASE_URL/users/all`        | Get all users (Admin) |
+| GET    | `BASE_URL/users/user/:id`   | Get user by ID |
+| GET    | `BASE_URL/users/reporters`  | Get list of reporters (Admin) |
+| GET    | `BASE_URL/users/readers`    | Get list of readers (Admin) |
+| POST   | `BASE_URL/users/`          | Create a new user (Admin) |
+| PUT    | `BASE_URL/users/`          | Update user details |
+| DELETE | `BASE_URL/users/:id`        | Delete user (Admin) |
+
+#### Endpoints
+
+### 1. Get My Profile
+`GET BASE_URL/users/profile`
+- **Response:**
+  - `200 OK`: User profile details
+  - `401 Unauthorized`: Invalid or missing token
+
+---
+
+### 2. Get All Users
+`GET BASE_URL/users/all`
+- **Response:**
+  - `200 OK`: List of users
+  - `403 Forbidden`: Insufficient permissions
+
+---
+
+### 3. Get User by ID
+`GET BASE_URL/users/user/:id`
+- **Response:**
+  - `200 OK`: User details
+  - `404 Not Found`: User does not exist
+
+---
+
+### 4. Get Reporters
+`GET BASE_URL/users/reporters`
+- **Response:**
+  - `200 OK`: List of reporters
+  - `403 Forbidden`: Insufficient permissions
+
+---
+
+### 5. Get Readers
+`GET BASE_URL/users/readers`
+- **Response:**
+  - `200 OK`: List of readers
+  - `403 Forbidden`: Insufficient permissions
+
+---
+
+### 6. Create User
+`POST BASE_URL/users/`
+- **Request Body:**
+  ```json
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepassword",
+    "role": "reader"
+  }
+  ```
+- **Response:**
+  - `201 Created`: User created successfully
+  - `400 Bad Request`: Invalid input
+
+---
+
+### 7. Update User
+`PUT BASE_URL/users/`
+##### Form-Data Parameters
+| Key    | Type  | Description |
+|--------|------|-------------|
+| imgUrl | File | Profile image file |
+| data   | JSON | JSON string containing updated user details |
+
+- **Request Body (Multipart Form-Data):**
+  - `imgUrl`: Profile image file
+  - `data`: JSON string containing:
+- **Response:**
+  - `200 OK`: User updated successfully
+  - `400 Bad Request`: Invalid input
+
+---
+
+### 8. Delete User
+`DELETE BASE_URL/users/:id`
+- **Response:**
+  - `200 OK`: User deleted successfully
+  - `404 Not Found`: User does not exist
 
 
 ---
