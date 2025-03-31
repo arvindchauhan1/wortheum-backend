@@ -40,8 +40,7 @@ exports.getUserById = asyncHandler(async (req, res, next) => {
 
 // Get all reporters (Admin)
 exports.getReporters = asyncHandler(async (req, res, next) => {
-    console.log("api run")
-    const reporters = await User.find();
+    const reporters = await User.find({ role: "reporter" });
     successHandler(res, 200, "Reporters fetched successfully", reporters);
 });
 
