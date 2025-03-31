@@ -72,7 +72,10 @@ exports.login = asyncHandler(async (req, res, next) => {
     // Set token in header BEFORE sending response
     res.setHeader('Authorization', `Bearer ${token}`);
 
-    return successHandler(res, 200, 'Login successful', { token });
+    return successHandler(res, 200, 'Login successful', {
+        token,
+        role: user.role
+    });
 });
 
 
