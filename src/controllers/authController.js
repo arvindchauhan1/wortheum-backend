@@ -59,7 +59,8 @@ exports.login = asyncHandler(async (req, res, next) => {
     const token = jwt.sign(
         {
             _id: user._id.toString(),
-            role: user.role
+            role: user.role,
+            loginMethod: 'email'
         },
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
@@ -92,6 +93,7 @@ exports.testLogin = asyncHandler(async (req, res, next) => {
     return successHandler(res, 200, 'Test login successful', {
         name: user.name,
         email: user.email,
+        hiveUsername: user.hiveUsername,
         role: user.role
     });
 });

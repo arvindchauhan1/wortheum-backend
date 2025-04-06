@@ -30,8 +30,10 @@ const adminDetailsSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, unique: true, sparse: true }, // Make sparse to allow Hive-only users
     password: { type: String, required: true },
+    hiveUsername: { type: String, unique: true, sparse: true },
+    hivePublicKey: { type: String },
     role: {
         type: String,
         enum: ['reader', 'reporter', 'admin', 'super_admin'],
