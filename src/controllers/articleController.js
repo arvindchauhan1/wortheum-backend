@@ -59,6 +59,7 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
         }
     }
 
+    console.log(req.user)
 
     const articleData = {
         title,
