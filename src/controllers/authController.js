@@ -93,7 +93,6 @@ exports.testLogin = asyncHandler(async (req, res, next) => {
     return successHandler(res, 200, 'Test login successful', {
         name: user.name,
         email: user.email,
-        hiveUsername: user.hiveUsername,
         role: user.role
     });
 });
