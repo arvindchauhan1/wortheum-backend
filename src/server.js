@@ -20,6 +20,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
+// static upload folder
+app.use('/api/v1/uploads', express.static('public/uploads'));
+
+
+
 // DB
 require('./config/db');
 

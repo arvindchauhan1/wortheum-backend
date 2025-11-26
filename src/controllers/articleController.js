@@ -2,11 +2,12 @@ const asyncHandler = require('../middlewares/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const successHandler = require('../utils/successHandler');
 const Article = require('../models/articleModel');
+const ApproveLog = require('../models/approveLogModel');
 const getCurrentUser = require('../utils/getCurrentUser');
+const { deleteImage } = require('../utils/imageDeleteHelper');
+const { default: mongoose } = require('mongoose');
 
-
-
-const IMG_PATH = "/public/uploads/"
+const IMG_PATH = "/uploads/";
 
 // @desc    Create Article
 exports.createArticle = asyncHandler(async (req, res, next) => {
@@ -22,11 +23,11 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
     } catch (error) {
         return next(new ApiError(400, "Invalid JSON format in 'data'"));
     }
-    const { title, region, blocks: rawBlocks, featuredImage, ...optionalFields } = parsedBody;
+    const { title, region, blocks: rawBlocks, featuredImage, category, ...optionalFields } = parsedBody;
 
     // Validate required fields
-    if (!title || !region || !rawBlocks || !req.files?.featuredImage) {
-        return next(new ApiError(400, "Title, region, and featuredImage are required"));
+    if (!title || !region || !rawBlocks || !category || !req.files?.featuredImage) {
+        return next(new ApiError(400, "Title, region, category and featuredImage are required"));
     }
 
     // Process featured image
@@ -35,6 +36,8 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
         caption: featuredImage.caption || '',
         altText: featuredImage.altText || ''
     };
+
+    console.log(finalFeaturedImage)
 
     // Process blocks if provided
     let blocks = [];
@@ -56,13 +59,15 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
         }
     }
 
+    console.log(req.user)
 
     const articleData = {
         title,
+        category,
         region,
         blocks, // Optional blocks
-        publisherId: req.user.id,
-        featuredImage,
+        publisherId: req.user._id,
+        featuredImage: finalFeaturedImage,
         ...optionalFields,
     };
 
@@ -71,13 +76,94 @@ exports.createArticle = asyncHandler(async (req, res, next) => {
     return successHandler(res, 201, "Article created successfully", { article });
 });
 
+// filter helper
+// Reusable function to build query filters
+const buildArticleFilter = (query) => {
+    const { category, publisher, startDate, endDate, status, tags } = query;
+
+    const filter = {
+        isDeleted: false,
+        ...(status && { status }), // Status filter (optional)
+        ...(category && { category }),
+        ...(tags ? { tags: { $in: tags.split(',').map(tag => tag.trim()) } } : {}),
+        ...(publisher && mongoose.Types.ObjectId.isValid(publisher) && { publisherId: new mongoose.Types.ObjectId(publisher) }),
+        ...(startDate || endDate) && {
+            createdAt: {
+                ...(startDate && { $gte: new Date(startDate) }),
+                ...(endDate && { $lte: new Date(endDate) }),
+            },
+        },
+    };
+
+    if (publisher && !mongoose.Types.ObjectId.isValid(publisher)) {
+        throw new ApiError(400, 'Invalid publisher ID');
+    }
+
+    return filter;
+};
+
+// @desc    Get approved articles with query filters and pagination
+// @route   GET /api/articles
+// @access  Public
+exports.getApprovedArticles = asyncHandler(async (req, res, next) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+
+        const filter = buildArticleFilter({ ...req.query, status: 'approved' });
+        console.log(filter)
+
+        // Pagination
+        const pageNumber = parseInt(page, 10);
+        const pageSize = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Fetch data
+        const totalArticles = await Article.countDocuments(filter);
+        const articles = await Article.find(filter).limit(pageSize).skip(skip);
+
+        if (!articles.length) {
+            return next(new ApiError(204, 'No articles found'));
+        }
+
+        return successHandler(res, 200, 'Approved articles fetched successfully', {
+            totalArticles,
+            totalPages: Math.ceil(totalArticles / pageSize),
+            currentPage: pageNumber,
+            pageSize,
+            articles,
+        });
+
+    } catch (error) {
+        return next(error);
+    }
+});
 
 
+// @desc    Get all articles with query filters and pagination
+// @route   GET /api/articles/all
+// @access  Admin
+exports.getAllArticles = asyncHandler(async (req, res, next) => {
+    const { page = 1, limit = 10 } = req.query;
 
-// @desc    Get All Articles
-exports.getArticles = asyncHandler(async (req, res, next) => {
-    const articles = await Article.find({ isDeleted: false });
-    return successHandler(res, 200, 'Articles fetched successfully', articles);
+    const filter = buildArticleFilter(req.query);
+    console.log(filter)
+
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * pageSize;
+
+    const totalArticles = await Article.countDocuments(filter);
+    const articles = await Article.find(filter).limit(pageSize).skip(skip);
+
+    if (!articles.length) return next(new ApiError(204, 'No articles found'));
+
+    return successHandler(res, 200, 'Articles fetched successfully', {
+        totalArticles,
+        totalPages: Math.ceil(totalArticles / pageSize),
+        currentPage: pageNumber,
+        pageSize,
+        articles,
+    });
 });
 
 // @desc    Get Single Article by ID
@@ -91,17 +177,164 @@ exports.getArticleById = asyncHandler(async (req, res, next) => {
     return successHandler(res, 200, 'Article fetched successfully', article);
 });
 
-// Optional: Soft delete Article
+// @desc    Delete Article by ID
 exports.deleteArticle = asyncHandler(async (req, res, next) => {
-    const article = await Article.findByIdAndUpdate(
-        req.params.id,
-        { isDeleted: true },
-        { new: true }
-    );
+    const article = await Article.findById(req.params.id);
 
     if (!article) {
         return next(new ApiError(404, 'Article not found'));
     }
+    // Check if the logged-in user is authorized to delete
+    if (
+        article.publisherId.toString() !== req.user._id && // Not the publisher
+        !['admin', 'super_admin'].includes(req.user.role) // Not an admin
+    ) {
+        return next(new ApiError(403, 'Unauthorized to delete this article'));
+    }
+
+
+    if (process.env.NODE_ENV === "dev") {
+        // Delete featured image
+        if (article.featuredImage?.url) {
+            deleteImage(article.featuredImage?.url);
+        }
+
+        // Delete block images
+        if (article.blocks) {
+            article.blocks.forEach(block => {
+                if (block.type === 'image' && block.data?.url) {
+                    deleteImage(block.data.url)
+                }
+            });
+        }
+
+        // Permanently delete Article
+        await Article.findByIdAndDelete(req.params.id);
+    } else {
+        // soft delete
+        article.isDeleted = true;
+        await article.save();
+    }
+
 
     return successHandler(res, 200, 'Article deleted successfully');
+});
+
+// @desc    Update Article
+exports.updateArticle = asyncHandler(async (req, res, next) => {
+    const articleId = req.params.id;
+
+    let parsedBody;
+    try {
+        parsedBody = typeof req.body.data === "string" ? JSON.parse(req.body.data) : req.body.data;
+    } catch (error) {
+        return next(new ApiError(400, "Invalid JSON format in 'data'"));
+    }
+
+    const { title, region, blocks: rawBlocks, featuredImage, ...optionalFields } = parsedBody;
+
+    // Find article
+    const article = await Article.findById(articleId);
+    if (!article) {
+        return next(new ApiError(404, "Article not found"));
+    }
+
+    // Authorization check
+    if (
+        article.publisherId.toString() !== req.user._id &&
+        !["admin", "super-admin"].includes(req.user.role)
+    ) {
+        return next(new ApiError(403, "You are not authorized to update this article"));
+    }
+
+    /** ======== Featured Image Handling ======== **/
+    if (req.files?.featuredImage) {
+        // Delete previous image if exists
+        if (article.featuredImage?.url) {
+            await deleteImage(article.featuredImage.url);
+        }
+        // Add new
+        article.featuredImage = {
+            url: IMG_PATH + `${req.files.featuredImage[0].filename}`,
+            caption: featuredImage?.caption || '',
+            altText: featuredImage?.altText || ''
+        };
+    } else if (featuredImage) {
+        // If only caption or altText updated
+        article.featuredImage.caption = featuredImage.caption || article.featuredImage.caption;
+        article.featuredImage.altText = featuredImage.altText || article.featuredImage.altText;
+    }
+
+    /** ======== Blocks Handling ======== **/
+    let blocks = [];
+    let imageIndex = 0;
+
+    if (rawBlocks?.length) {
+        // Delete old block images
+        for (let block of article.blocks) {
+            if (block.type === 'image' && block.data.url) {
+                await deleteImage(block.data.url);
+            }
+        }
+
+        // Add new blocks
+        for (let block of rawBlocks) {
+            if (block.type === 'image' && req.files?.blockImages?.[imageIndex]) {
+                blocks.push({
+                    type: 'image',
+                    data: {
+                        url: IMG_PATH + req.files.blockImages[imageIndex].filename,
+                        caption: block.data.caption || '',
+                        altText: block.data.altText || ''
+                    }
+                });
+                imageIndex++;
+            } else if (block.type !== 'image') {
+                blocks.push(block);
+            }
+        }
+        article.blocks = blocks;
+    }
+
+    /** ======== Field Updates ======== **/
+    if (title) article.title = title;
+    if (region) article.region = region;
+    Object.assign(article, optionalFields);
+
+    await article.save();
+
+    return successHandler(res, 200, "Article updated successfully", { article });
+});
+
+// @desc    Approve or Reject an Article
+// @route   POST /api/articles/approve
+// @access  Admin/Superadmin
+exports.approveArticle = asyncHandler(async (req, res, next) => {
+    const { articleId, action, remarks } = req.body;
+    const { _id, role } = req.user;
+
+    if (!['admin', 'super_admin'].includes(role)) {
+        return next(new ApiError(403, 'Unauthorized: Only Admins can approve or reject articles'));
+    }
+
+    const article = await Article.findById(articleId);
+    if (!article) {
+        return next(new ApiError(404, 'Article not found'));
+    }
+
+    if (!['approved', 'rejected'].includes(action)) {
+        return next(new ApiError(400, 'Invalid action. Allowed actions: approved, rejected'));
+    }
+
+    article.status = action;
+    await article.save();
+
+    const log = await ApproveLog.create({
+        articleId,
+        actionBy: _id,
+        action,
+        remarks
+    });
+
+    return successHandler(res, 200, 'Article approval status updated successfully', log);
 });

@@ -90,21 +90,21 @@ npm run dev
 
 ## 🧩 API Endpoints
 
-### Auth Routes:
+### 🔐 Auth Routes:
 
 | Method | Endpoint                | Description         |
 | ------ | ----------------------- | ------------------- |
-| POST   | `/api/v1/auth/register` | Register a new user |
-| POST   | `/api/v1/auth/login`    | Login a user        |
+| POST   | `BASE_URL/auth/register` | Register a new user |
+| POST   | `BASE_URL/auth/login`    | Login a user        |
 
 ---
 
-## 💻 Example Request Body
+#### 💻 Example Request Body
 
-### Register:
+#### Register:
 
 ```json
-POST /api/v1/auth/register
+POST BASE_URL/auth/register
 {
     "name": "John Doe",
     "email": "john@example.com",
@@ -113,41 +113,52 @@ POST /api/v1/auth/register
 }
 ```
 
-### Login:
+#### Login:
 
 ```json
-POST /api/v1/auth/login
+POST BASE_URL/auth/login
 {
     "email": "john@example.com",
     "password": "123456"
 }
 ```
 
-# Create Article API Documentation
+### 📰 Article API Documentation
 
-## Endpoint
+### Article Routes :
 
-**POST** `/api/articles`
 
-## Description
+| Method | Endpoint              | Description                         | Authorization |
+|:-----:|:---------------------:|:-----------------------------------:|:------------:|
+| POST  | `BASE_URL/articles/`      | Create a new article               | Authenticated Users |
+| GET   | `BASE_URL/articles/`      | Fetch all articles                 | None         |
+| GET   | `BASE_URL/articles/:id`   | Fetch article by ID                | None         |
+| DELETE| `BASE_URL/articles/:id`   | Delete article (soft/permanent)    | Publisher, `admin`, `super_admin` |
+| PUT   | `BASE_URL/articles/:id`   | Update article                     | Publisher, `admin`, `super_admin` |
+
+### 1. Create Article
+**Endpoint:** `POST BASE_URL/articles/`
+
+
+#### Description
 
 This endpoint allows authenticated users to create an article with a featured image and multiple content blocks, including text and images.
 
-## Authorization
+#### Authorization
 
 - Required Roles: `reporter`, `super_admin`
 - Authentication: Bearer Token (JWT required)
 
-## Request Format
+#### Request Format
 
-### Headers
+##### Headers
 
 ```http
 Content-Type: multipart/form-data
 Authorization: Bearer <your_token>
 ```
 
-### Form Data
+##### Form Data
 
 | Field           | Type                | Description                             |
 | --------------- | ------------------- | --------------------------------------- |
@@ -155,7 +166,7 @@ Authorization: Bearer <your_token>
 | `blockImages`   | `file[]` (optional) | Multiple image files for image blocks   |
 | `data`          | `JSON (string)`     | JSON object containing article details  |
 
-### JSON Structure in `data` Field
+##### JSON Structure in `data` Field
 
 ```json
 {
@@ -186,9 +197,9 @@ Authorization: Bearer <your_token>
 }
 ```
 
-## Response Format
+#### Response Format
 
-### Success Response
+##### Success Response
 
 **Status Code:** `201 Created`
 
@@ -226,9 +237,9 @@ Authorization: Bearer <your_token>
 }
 ```
 
-### Error Responses
+#### Error Responses
 
-#### 400 Bad Request (Invalid JSON)
+###### 400 Bad Request (Invalid JSON)
 
 ```json
 {
@@ -236,7 +247,7 @@ Authorization: Bearer <your_token>
 }
 ```
 
-#### 401 Unauthorized
+###### 401 Unauthorized
 
 ```json
 {
@@ -244,7 +255,7 @@ Authorization: Bearer <your_token>
 }
 ```
 
-#### 500 Internal Server Error
+###### 500 Internal Server Error
 
 ```json
 {
@@ -252,40 +263,175 @@ Authorization: Bearer <your_token>
 }
 ```
 
-## Notes
+###### Notes
 
 - The `data` field should be sent as a JSON string.
 - `blockImages` should align with `blocks` where `type` is `image`.
 - Images are stored in `/public/uploads/`.
 - The API automatically assigns URLs to uploaded images.
 
-**Example Usage (cURL):**
+### 2. Get All Articles
+**Endpoint:** `GET BASE_URL/articles/`
 
-```sh
-curl -X POST "http://localhost:5000/api/articles" \
--H "Authorization: Bearer YOUR_TOKEN" \
--H "Content-Type: multipart/form-data" \
--F "featuredImage=@/path/to/featured.jpg" \
--F "blockImages=@/path/to/image1.jpg" \
--F "blockImages=@/path/to/image2.jpg" \
--F "data={\"title\":\"AI Revolution in 2025\",\"region\":\"Global\",...}"
+**Response:**
+- `200 OK` - Returns an array of articles
+- `204 No Content` - No articles found
+
+### 3. Get Article by ID
+**Endpoint:** `GET BASE_URL/articles/:id`
+
+**Response:**
+- `200 OK` - Returns the requested article
+- `404 Not Found` - Article not found
+
+### 4. Delete Article by ID
+**Endpoint:** `DELETE BASE_URL/articles/:id`
+
+**Authorization Required:**
+- User must be either the publisher of the article or have the role `local_admin` or `super_admin`.
+
+**Behavior:**
+- **Development Mode (`NODE_ENV=dev`)**: Permanently deletes the article and removes associated images from `public/uploads`.
+- **Production Mode (`NODE_ENV=production`)**: Soft deletes the article by marking `isDeleted: true`.
+
+**Response:**
+- `200 OK` - Article deleted successfully
+- `403 Forbidden` - Unauthorized action
+- `404 Not Found` - Article not found
+
+### 5. Update Article
+**Endpoint:** `PUT BASE_URL/articles/:id`
+
+Update article content, featured image, or block images.  
+**Roles:** `publisher`, `local_admin`, `super_admin`
+
+#### Request
+
+**Headers:**
+- `Content-Type: multipart/form-data`
+- `Authorization: Bearer <token>`
+
+**Form Data:**
+| Field           | Type                | Description                  |
+| --------------- | ------------------- | ---------------------------- |
+| `featuredImage` | `file` (optional)   | New featured image           |
+| `blockImages`   | `file[]` (optional) | New block images             |
+| `data`          | `JSON (string)`     | Updated article details     |
+
+__📌 Note__ : Refer Create Article Api for more details.
+
+#### Success Response
+`200 OK`
+```json
+{ "message": "Article updated successfully", "article": { /* updated data */ } }
 ```
 
-## 📌 Notes
+#### Errors
+`400` Invalid JSON, `403` Unauthorized, `404` Not Found, `500` Server Error
 
-- Clean & modular folder structure.
-- Centralized response handlers.
-- Express-validator based validation.
-- Async error handling with custom `asyncHandler()`.
+
+### 👤 User API Documentation
+#### API Endpoints Overview
+
+| Method | Endpoint      | Description          |
+|--------|-------------|----------------------|
+| GET    | `BASE_URL/users/profile`    | Get logged-in user profile |
+| GET    | `BASE_URL/users/all`        | Get all users (Admin) |
+| GET    | `BASE_URL/users/user/:id`   | Get user by ID |
+| GET    | `BASE_URL/users/reporters`  | Get list of reporters (Admin) |
+| GET    | `BASE_URL/users/readers`    | Get list of readers (Admin) |
+| POST   | `BASE_URL/users/`          | Create a new user (Admin) |
+| PUT    | `BASE_URL/users/`          | Update user details |
+| DELETE | `BASE_URL/users/:id`        | Delete user (Admin) |
+
+#### Endpoints
+
+### 1. Get My Profile
+`GET BASE_URL/users/profile`
+- **Response:**
+  - `200 OK`: User profile details
+  - `401 Unauthorized`: Invalid or missing token
 
 ---
 
+### 2. Get All Users
+`GET BASE_URL/users/all`
+- **Response:**
+  - `200 OK`: List of users
+  - `403 Forbidden`: Insufficient permissions
+
+---
+
+### 3. Get User by ID
+`GET BASE_URL/users/user/:id`
+- **Response:**
+  - `200 OK`: User details
+  - `404 Not Found`: User does not exist
+
+---
+
+### 4. Get Reporters
+`GET BASE_URL/users/reporters`
+- **Response:**
+  - `200 OK`: List of reporters
+  - `403 Forbidden`: Insufficient permissions
+
+---
+
+### 5. Get Readers
+`GET BASE_URL/users/readers`
+- **Response:**
+  - `200 OK`: List of readers
+  - `403 Forbidden`: Insufficient permissions
+
+---
+
+### 6. Create User
+`POST BASE_URL/users/`
+- **Request Body:**
+  ```json
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepassword",
+    "role": "reader"
+  }
+  ```
+- **Response:**
+  - `201 Created`: User created successfully
+  - `400 Bad Request`: Invalid input
+
+---
+
+### 7. Update User
+`PUT BASE_URL/users/`
+##### Form-Data Parameters
+| Key    | Type  | Description |
+|--------|------|-------------|
+| imgUrl | File | Profile image file |
+| data   | JSON | JSON string containing updated user details |
+
+- **Request Body (Multipart Form-Data):**
+  - `imgUrl`: Profile image file
+  - `data`: JSON string containing:
+- **Response:**
+  - `200 OK`: User updated successfully
+  - `400 Bad Request`: Invalid input
+
+---
+
+### 8. Delete User
+`DELETE BASE_URL/users/:id`
+- **Response:**
+  - `200 OK`: User deleted successfully
+  - `404 Not Found`: User does not exist
+
+
+---
 ## 🎯 Future Scope
 
-- JWT Authentication
 - Password Reset with Email
-- Role Permissions Middleware
-- Testing with Jest or Mocha
+- and many more...
 
 ---
 

@@ -13,6 +13,10 @@ const getCurrentUser = require('../utils/getCurrentUser');
 exports.register = asyncHandler(async (req, res, next) => {
     const { name, email, password, role } = req.body;
 
+    if (["admin", "super_admin"].includes(role)) {
+        return next(new ApiError(403, "Unauthorized to register as an admin account"));
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
         return next(new ApiError(400, 'Email already exists'));
@@ -54,8 +58,9 @@ exports.login = asyncHandler(async (req, res, next) => {
     // Generate token
     const token = jwt.sign(
         {
-            id: user._id.toString(),
-            role: user.role
+            _id: user._id.toString(),
+            role: user.role,
+            loginMethod: 'email'
         },
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
@@ -68,7 +73,10 @@ exports.login = asyncHandler(async (req, res, next) => {
     // Set token in header BEFORE sending response
     res.setHeader('Authorization', `Bearer ${token}`);
 
-    return successHandler(res, 200, 'Login successful', { token });
+    return successHandler(res, 200, 'Login successful', {
+        token,
+        role: user.role
+    });
 });
 
 
@@ -77,7 +85,7 @@ exports.login = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/auth/test-login
 // @access  Public
 exports.testLogin = asyncHandler(async (req, res, next) => {
-    const user = await getCurrentUser(req.user.id);
+    const user = await getCurrentUser(req.user._id);
     if (!user) {
         return next(new ApiError(401, 'Invalid login attempt.'));
     }
